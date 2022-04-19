@@ -100,5 +100,7 @@ $SCRIPT_DIR/docker-compose-extract.sh -f "${filePath}" -p "${profile}" -i "${ima
     line="${line//$\{TAG:-dev\}/$tag}"
     image="${line//$\{DOCKER_REGISTRY\}/$registry/}"
     prometedImage="${line//$\{DOCKER_REGISTRY\}/$promoteToRegistry/}"
-    echo "docker tag $image $prometedImage"
+    tagCommand="docker tag $image $prometedImage"
+    echo "$tagCommand"
+    eval "$tagCommand"
 done
