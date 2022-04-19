@@ -9,7 +9,8 @@ A **docker-compose** file is used to perform the following actions on multiple i
 - Execute a command on each image. This can be used for DevSecOps processes such as image scanning
 - Promote images from one registry to another
 
-The repository uses docker-compose **profiles** to control which images actions are performed on. Profiles can also be used to distrobute actions across parallel processes to improve build/scan times.
+The repository uses docker-compose **profiles** to control which images actions are performed on. 
+Profiles can also be used to distrobute actions across parallel processes/jobs to improve build/scan times.
 
 ## Sample Project
 
@@ -42,6 +43,8 @@ docker-compose --profile test down
 # stop and delete volume
 docker-compose --profile test down -v
 ```
+
+Access the application at [http://localhost:5241/](http://localhost:5241/)
 
 ## Extract
 
