@@ -1,0 +1,93 @@
+# MultiContainerCI CI/CD
+
+trigger:
+  branches:
+    include:
+    - main
+
+variables:
+  BUILD_CONFIGURATION: "Release"
+
+stages:
+  - stage: "Build"
+      
+    jobs:    
+      - job: 
+        displayName: "Build Images"
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+        - template: ./containers/build-images.yml
+          parameters:
+              DOCKER_REGISTRY: devregistry.azurecr.io
+              DOCKER_REGISTRY_ENDPOINT: devregistry
+              PROFILE: ci
+      
+      - job: "Publish_Artifacts"
+        displayName: "Publish Artifacts"
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+        - task: CopyFiles@2
+          inputs:
+            contents: |
+                docker-compose.yml
+                pipelines/scripts/docker-compose-promote.sh
+                pipelines/scripts/docker-compose-extract.sh
+            targetFolder: $(Build.ArtifactStagingDirectory)/drop
+        - task: PublishBuildArtifacts@1
+          inputs:
+            pathtoPublish: '$(Build.ArtifactStagingDirectory)/drop' 
+            artifactName: 'drop'
+
+  - stage: Deploy_Dev
+    displayName: "Deploy Development"
+    dependsOn: Build
+    jobs:
+    - template: ./deploy/deployment.yml
+      parameters:
+        environmentName: "Development"
+        acrServer: "devregistry.azurecr.io"
+        acrServerConnection: "devregistry"
+        promoteFromAcrServer: ""
+        promoteFromAcrServerConnection: ""
+        imageTag: "$(Build.BuildNumber)"
+
+  - stage: Deploy_QA
+    displayName: "Deploy QA"
+    dependsOn: Deploy_Dev
+    jobs:
+    - template: ./deploy/deployment.yml
+      parameters:
+        environmentName: "QA"
+        acrServer: "qaregistry.azurecr.io"
+        acrServerConnection: "qaregistry"
+        promoteFromAcrServer: "devregistry.azurecr.io"
+        promoteFromAcrServerConnection: "devregistry"
+        imageTag: "$(Build.BuildNumber)"
+
+  - stage: Deploy_Staging
+    displayName: "Deploy Staging"
+    dependsOn: Deploy_QA
+    jobs:
+    - template: ./deploy/deployment.yml
+      parameters:
+        environmentName: "Staging"
+        acrServer: "stgregistry.azurecr.io"
+        acrServerConnection: "stgregistry"
+        promoteFromAcrServer: "qaregistry.azurecr.io"
+        promoteFromAcrServerConnection: "qaregistry"
+        imageTag: "$(Build.BuildNumber)"
+
+  - stage: Deploy_Production
+    displayName: "Deploy Production"
+    dependsOn: Deploy_Staging
+    jobs:
+    - template: ./deploy/deployment.yml
+      parameters:
+        environmentName: "Production"
+        acrServer: "prodregistry.azurecr.io"
+        acrServerConnection: "prodregistry"
+        promoteFromAcrServer: "stgregistry.azurecr.io"
+        promoteFromAcrServerConnection: "stgregistry"
+        imageTag: "$(Build.BuildNumber)"

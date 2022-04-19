@@ -1,0 +1,51 @@
+parameters:
+  - name: DOCKER_REGISTRY
+    type: string
+  - name: DOCKER_REGISTRY_ENDPOINT
+    type: string
+  - name: DOCKER_COMPOSE_FILE
+    type: string
+    default: 'docker-compose.yml'
+  - name: PROFILE
+    type: string
+
+steps:
+- bash: |
+      #!/bin/bash
+      wget https://github.com/wagoodman/dive/releases/download/v0.9.2/dive_0.9.2_linux_amd64.deb
+      sudo apt install ./dive_0.9.2_linux_amd64.deb
+  displayName: Install Dive
+
+- bash: |
+      #!/bin/bash
+      chmod +x ./pipelines/scripts/*.sh
+  displayName: Set Execute Permissions
+
+- script: 'docker-compose --profile ${{ parameters.PROFILE }} -f ${{ parameters.DOCKER_COMPOSE_FILE }} build'
+  displayName: "Build Container Images"
+  env:
+    TAG: $(Build.BuildNumber)
+    DOCKER_REGISTRY: '${{ parameters.DOCKER_REGISTRY }}/'
+
+- task: Bash@3
+  displayName: 'Dive Scan'
+  inputs:
+    targetType: 'filePath'
+    filePath: 'pipelines/scripts/docker-compose-command.sh'
+    arguments: '-f ${{ parameters.DOCKER_COMPOSE_FILE }} -r ${{ parameters.DOCKER_REGISTRY }} -p ${{ parameters.PROFILE }} -t $(Build.BuildNumber) -c "dive @image"'
+  env:
+    CI: 'true'
+
+- task: DockerCompose@0
+  displayName: 'Push Images to ACR'
+  # disabled for testing
+  condition: false
+  inputs:
+    containerregistrytype: 'Container Registry'
+    dockerRegistryEndpoint: '${{ parameters.DOCKER_REGISTRY_ENDPOINT }}'
+    dockerComposeFile: '${{ parameters.DOCKER_COMPOSE_FILE }}'
+    dockerComposeFileArgs: |
+      TAG=$(Build.BuildNumber)
+      DOCKER_REGISTRY=${{ parameters.DOCKER_REGISTRY }}/
+    qualifyImageNames: false
+    dockerComposeCommand: '--profile ${{ parameters.PROFILE }} push'

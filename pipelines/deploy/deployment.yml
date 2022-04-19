@@ -1,0 +1,72 @@
+parameters:
+  - name: environmentName
+    type: string
+  - name: acrServer
+    type: string
+  - name: acrServerConnection
+    type: string
+  - name: promoteFromAcrServer
+    type: string
+  - name: promoteFromAcrServerConnection
+    type: string
+  - name: imageTag
+    type: string
+  - name: dockerComposeFile
+    type: string
+    default: 'docker-compose.yml'
+  - name: dockerComposeProfile
+    type: string
+    default: 'ci'
+
+jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: '${{parameters.environmentName}}'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            ####### Promote Docker Images
+            - bash: |
+                #!/bin/bash
+                chmod +x $(Pipeline.Workspace)/drop/pipelines/scripts/*.sh
+              displayName: Set Execute Permissions
+
+            - task: DockerCompose@0
+              displayName: 'Pull Promote Images'
+              condition: and(succeeded(), ne('${{ parameters.promoteFromAcrServer }}', ''))
+              inputs:
+                containerregistrytype: 'Container Registry'
+                dockerRegistryEndpoint: '${{ parameters.promoteFromAcrServerConnection }}'
+                dockerComposeFile: '$(Pipeline.Workspace)/drop/${{ parameters.dockerComposeFile }}'
+                dockerComposeFileArgs: |
+                  TAG=${{ parameters.imageTag }}
+                  DOCKER_REGISTRY=${{ parameters.promoteFromAcrServer }}/
+                  qualifyImageNames: false
+                  dockerComposeCommand: "--profile ${{ parameters.dockerComposeProfile }} pull"
+
+            - task: Bash@3
+              displayName: 'Tag Images'
+              condition: and(succeeded(), ne('${{ parameters.promoteFromAcrServer }}', ''))
+              inputs:
+                targetType: 'filePath'
+                filePath: '$(Pipeline.Workspace)/drop/pipelines/scripts/docker-compose-promote.sh'
+                arguments: '-f $(Pipeline.Workspace)/drop/${{ parameters.dockerComposeFile }} -p ${{ parameters.dockerComposeProfile }} -t ${{ parameters.imageTag }} -r ${{ parameters.promoteFromAcrServer }} -u ${{ parameters.acrServer }}'
+
+            - task: DockerCompose@0
+              displayName: 'Push Promoted Images'
+              condition: and(succeeded(), ne('${{ parameters.promoteFromAcrServer }}', ''))
+              inputs:
+                containerregistrytype: 'Container Registry'
+                dockerRegistryEndpoint: '${{ parameters.acrServerConnection }}'
+                dockerComposeFile: '$(Pipeline.Workspace)/drop/${{ parameters.dockerComposeFile }}'
+                dockerComposeFileArgs: |
+                  TAG=${{ parameters.imageTag }}
+                  DOCKER_REGISTRY=${{ parameters.acrServer }}/
+                  qualifyImageNames: false
+                  dockerComposeCommand: "--profile ${{ parameters.dockerComposeProfile }} push"
+
+            ######## Deploy Containers Here....
+            

@@ -1,0 +1,41 @@
+﻿version: "3.4"
+services:
+  database:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    profiles: ["dev", "test"]
+    container_name: sqlserver
+    ports:
+      - 1433:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - "SA_PASSWORD=Admin1234!"
+    volumes:
+      - sql:/var/opt/mssql/data
+
+  agent:
+    build:
+      context: .
+      dockerfile: src/MultiContainerCI.Agent/Dockerfile
+    image: ${DOCKER_REGISTRY}multicontainers/agent:${TAG:-dev}
+    profiles: ["ci", "test"]
+    environment:
+      - ConnectionString=${ConnectionString}
+    depends_on:
+      - database
+
+  web:
+    build:
+      context: .
+      dockerfile: src/Web/Server/Dockerfile
+    image: ${DOCKER_REGISTRY}multicontainers/web:${TAG:-dev}
+    profiles: ["ci", "test"]
+    ports:
+      - 5241:80
+    environment:
+      - ConnectionString=${ConnectionString}
+    depends_on:
+      - database
+      - agent
+
+volumes: # this volume ensures that data is persisted when the container is deleted
+  sql:
