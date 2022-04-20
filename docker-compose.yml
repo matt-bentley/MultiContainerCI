@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: src/MultiContainerCI.Agent/Dockerfile
-    image: ${DOCKER_REGISTRY}multicontainers/agent:${TAG:-dev}
+    image: ${DOCKER_REGISTRY}multicontainers/agent:${TAG:-latest}
     profiles: ["ci", "test"]
     environment:
       - ConnectionString=${ConnectionString}
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       dockerfile: src/Web/Server/Dockerfile
-    image: ${DOCKER_REGISTRY}multicontainers/web:${TAG:-dev}
+    image: ${DOCKER_REGISTRY}multicontainers/web:${TAG:-latest}
     profiles: ["ci", "test"]
     ports:
       - 5241:80
