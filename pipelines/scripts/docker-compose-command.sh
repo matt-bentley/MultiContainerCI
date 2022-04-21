@@ -92,7 +92,7 @@ echo "Running command against images from: ${filePath}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 $SCRIPT_DIR/docker-compose-extract.sh -f "${filePath}" -p "${profile}" -i "${imageFilter}" -e "${imageExcludeFilter}" | while read -r line ; do
-   image="${line//$\{TAG:-dev\}/$tag}"
+   image="${line//$\{TAG:-latest\}/$tag}"
    image="${image//$\{DOCKER_REGISTRY\}/$registry}"
    imageCommand="${command/@image/"$image"}"
    echo $imageCommand
