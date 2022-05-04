@@ -99,8 +99,8 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 $SCRIPT_DIR/docker-compose-extract.sh -f "${filePath}" -p "${profile}" -i "${imageFilter}" -e "${imageExcludeFilter}" | while read -r line ; do
     line="${line//$\{TAG:-latest\}/$tag}"
     image="${line//$\{DOCKER_REGISTRY\}/$registry/}"
-    prometedImage="${line//$\{DOCKER_REGISTRY\}/$promoteToRegistry/}"
-    tagCommand="docker tag $image $prometedImage"
+    promotedImage="${line//$\{DOCKER_REGISTRY\}/$promoteToRegistry/}"
+    tagCommand="docker tag $image $promotedImage"
     echo "$tagCommand"
     eval "$tagCommand"
 done
